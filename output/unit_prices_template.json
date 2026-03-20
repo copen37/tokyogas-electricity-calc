@@ -5,7 +5,19 @@
     "currency": "JPY",
     "tax_included": true,
     "rounding": "floor_yen_total",
-    "notes": "単価は税込を想定。最終請求額は円未満切り捨て（要約資料参照）。"
+    "notes": "単価は税込を想定。最終請求額は円未満切り捨て。検針票照合時は variableUnitMode=single_month_end（検針終了月単価を期間全体に適用）を優先。",
+    "sources": {
+      "fuel_adjustment": "https://home.tokyo-gas.co.jp/gas_power/price/power_adjust.html",
+      "renewable_surcharge": "https://www.enecho.meti.go.jp/category/saving_and_new/saiene/kaitori/surcharge.html",
+      "gov_support": "https://denkigas-gekihenkanwa.go.jp/general/",
+      "set_discount": "https://home.tokyo-gas.co.jp/gas_power/plan/gp_plan/set.html"
+    },
+    "update_procedure": [
+      "東京ガスの燃料費調整単価ページから対象月(YYYY-MM)の低圧(東京電力エリア)単価を monthly_adjustments に反映",
+      "同月の国支援単価(円/kWh)を monthly_adjustments.gov_support_yen_per_kwh に反映。支援が無い月は0",
+      "再エネ賦課金は経産省(資源エネルギー庁)公表の年度単価を annual_levies に反映",
+      "反映後、検針票の月跨ぎ期間は single_month_end / prorated_by_day の両方で差分確認"
+    ]
   },
   "plans": {
     "basic": {
@@ -81,10 +93,15 @@
     }
   },
   "monthly_adjustments": {
+    "2026-01": {
+      "fuel_adjustment_yen_per_kwh": -10.24,
+      "gov_support_yen_per_kwh": 0,
+      "notes": "東京電力エリア低圧（要公式値で都度更新）"
+    },
     "2026-02": {
       "fuel_adjustment_yen_per_kwh": -12.22,
-      "gov_support_yen_per_kwh": 4.5,
-      "notes": "東京電力エリア低圧。燃料費調整単価は値引き反映後。"
+      "gov_support_yen_per_kwh": 0,
+      "notes": "東京電力エリア低圧。検針票照合用（国支援なし想定）"
     },
     "2026-04": {
       "fuel_adjustment_yen_per_kwh": -8.93,

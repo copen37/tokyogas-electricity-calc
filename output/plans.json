@@ -65,7 +65,8 @@
       "set_discount": {
         "type": "percent_total",
         "value": 0.005,
-        "name": "ガス・電気セット割（定率B）"
+        "max_discount_yen": 67,
+        "name": "ガス・電気セット割（定率B・上限67円）"
       }
     },
     {

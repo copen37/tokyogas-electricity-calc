@@ -86,6 +86,18 @@ gh api --method POST repos/copen37/tokyogas-electricity-calc/pages \
   - `gov_support_yen_per_kwh`
 - 年次更新: `annual_levies[FYxxxx].renewable_surcharge_yen_per_kwh`
 - 計算結果は円未満切り捨て（floor）
+- 参照先URL（一次情報）
+  - 燃料費調整: https://home.tokyo-gas.co.jp/gas_power/price/power_adjust.html
+  - 再エネ賦課金: https://www.enecho.meti.go.jp/category/saving_and_new/saiene/kaitori/surcharge.html
+  - 国支援: https://denkigas-gekihenkanwa.go.jp/general/
+  - セット割: https://home.tokyo-gas.co.jp/gas_power/plan/gp_plan/set.html
+
+### 検針票照合の前提
+- 請求期間モードで `開始日/終了日` を指定し、複数CSVを取り込み可
+- 変動単価の扱いを選択可
+  - `single_month_end`: 検針終了月単価を全期間へ適用（検針票合わせ優先）
+  - `prorated_by_day`: 月跨ぎを日数按分
+- 差分調査ログに `kWh / periodDays / 適用月 / 単価` を表示
 
 ## 構成
 - `output/`: 元のPython実装・計算定義・調査メモ
