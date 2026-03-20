@@ -19,16 +19,26 @@ function hasOffset(ts: string): boolean {
   return /([zZ]|[+-]\d{2}:?\d{2})$/.test(ts.trim());
 }
 
+function normalizeYmdh(ts: string): string | null {
+  const m = ts.trim().match(/^(\d{4})(\d{2})(\d{2})(\d{2})$/);
+  if (!m) return null;
+  return `${m[1]}-${m[2]}-${m[3]}T${m[4]}:00:00`;
+}
+
 function parseEpochMs(ts: string): number {
-  const normalized = ts.includes(" ") && !ts.includes("T") ? ts.replace(" ", "T") : ts;
+  const ymdh = normalizeYmdh(ts);
+  const base = ymdh ?? ts.trim();
+  const normalized = base.includes(" ") && !base.includes("T") ? base.replace(" ", "T") : base;
   if (hasOffset(normalized)) return new Date(normalized).getTime();
   return new Date(`${normalized}+09:00`).getTime();
 }
 
 function minuteOfDayFromTimestamp(ts: string, epochMs: number): number {
+  const ymdh = normalizeYmdh(ts);
+  if (ymdh) return Number(ymdh.slice(11, 13)) * 60;
+
   const trimmed = ts.trim();
   const timeMatch = trimmed.match(/[T\s](\d{2}):(\d{2})/);
-
   if (timeMatch && hasOffset(trimmed)) {
     const h = Number(timeMatch[1]);
     const m = Number(timeMatch[2]);
@@ -48,6 +58,9 @@ function minuteOfDayFromTimestamp(ts: string, epochMs: number): number {
 }
 
 function monthFromTimestamp(ts: string, epochMs: number): string {
+  const ymdh = normalizeYmdh(ts);
+  if (ymdh) return `${ymdh.slice(0, 4)}-${ymdh.slice(5, 7)}`;
+
   const monthMatch = ts.trim().match(/^(\d{4}-\d{2})/);
   if (monthMatch && hasOffset(ts)) return monthMatch[1];
 
@@ -78,23 +91,41 @@ function estimateDtMinutes(rows: Row[], index: number, prevDt: number): number {
   return 30;
 }
 
+function headerIndex(header: string[], candidates: string[]): number {
+  for (const c of candidates) {
+    const idx = header.indexOf(c);
+    if (idx >= 0) return idx;
+  }
+  return -1;
+}
+
 export function parseUsageCsv(text: string, unit: PowerUnit, maxRows = 200000): MonthlyUsage[] {
   const lines = text.split(/\r?\n/);
   if (lines.length < 2) throw new Error("CSVにデータ行がありません");
 
-  const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
-  const tsIdx = header.indexOf("timestamp");
-  const powerIdx = header.indexOf("power");
-  if (tsIdx < 0 || powerIdx < 0) throw new Error("CSVヘッダは timestamp,power が必要です");
+  const header = lines[0]
+    .split(",")
+    .map((h) => h.trim().toLowerCase().replace(/\s+/g, ""));
+
+  const tsIdx = headerIndex(header, ["timestamp", "計測日時", "日時", "time", "date"]);
+  const powerIdx = headerIndex(header, ["power", "買電", "使用電力", "usage", "consumption"]);
+
+  if (tsIdx < 0 || powerIdx < 0) {
+    throw new Error("CSVヘッダは timestamp,power（または 計測日時,買電）が必要です");
+  }
 
   const rows: Row[] = [];
   for (let i = 1; i < lines.length && rows.length < maxRows; i++) {
     const line = lines[i].trim();
     if (!line) continue;
+
     const cols = line.split(",");
     const timestamp = cols[tsIdx]?.trim();
-    const p = Number(cols[powerIdx]);
-    if (!timestamp || !Number.isFinite(p)) continue;
+    const powerRaw = cols[powerIdx]?.trim();
+    if (!timestamp || !powerRaw || powerRaw === "-") continue;
+
+    const p = Number(powerRaw);
+    if (!Number.isFinite(p)) continue;
 
     const epochMs = parseEpochMs(timestamp);
     if (!Number.isFinite(epochMs)) continue;

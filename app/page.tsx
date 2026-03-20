@@ -32,7 +32,18 @@ export default function Home() {
   async function onCsvUpload(file: File) {
     setCsvError(null);
     try {
-      const text = await file.text();
+      const buf = await file.arrayBuffer();
+      const bytes = new Uint8Array(buf);
+
+      const tryDecode = (encoding: string) => new TextDecoder(encoding as any, { fatal: true }).decode(bytes);
+
+      let text = "";
+      try {
+        text = tryDecode("utf-8");
+      } catch {
+        text = tryDecode("shift-jis");
+      }
+
       const monthly = parseUsageCsv(text, csvUnit);
       setCsvRows(monthly);
     } catch (e: any) {
@@ -134,7 +145,7 @@ export default function Home() {
       </section>
 
       <section style={{ border: "1px solid #ddd", padding: 12, marginBottom: 16 }}>
-        <h2>CSVアップロード（timestamp,power）</h2>
+        <h2>CSVアップロード（timestamp,power / 計測日時,買電）</h2>
         <p style={{ marginTop: 0 }}>
           timestampにoffsetがある場合はそれを尊重。offset無しはAsia/Tokyo扱い。W/kWではdt-minutesを隣接時刻差分から自動推定します。
         </p>
