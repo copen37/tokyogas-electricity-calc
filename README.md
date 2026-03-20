@@ -33,8 +33,8 @@ pnpm dev
   - 夜 kWh（01:00-06:00）
   - `jikanbetsu` は昼/夜単価で正確に計算
 
-### 3) CSVアップロード（ブラウザ内処理）
-ヘッダは `timestamp,power`。
+### 3) CSV/ZIPアップロード（ブラウザ内処理）
+ヘッダは `timestamp,power`（または `計測日時,買電`）。
 
 ```csv
 timestamp,power
@@ -44,20 +44,25 @@ timestamp,power
 ```
 
 - power-unit: `W / kW / Wh / kWh`
+- **複数CSV同時アップロード**に対応
+- **ZIPアップロード**に対応（ZIP内CSVを一括展開して集計）
 - `W/kW` の場合は、隣接時刻差分から `dt-minutes` を自動推定
 - timestamp に offset があればそれを尊重
 - offset が無い timestamp は `Asia/Tokyo` とみなす
 - 読み込み後に月ごとの `total_kWh / day_kWh / night_kWh` を表示
 - 「この月を入力へ反映」で年月・昼夜kWhをフォームに反映し、そのまま比較可能
+- **期間指定集計（開始日〜終了日）**で total/day/night を算出し「期間集計を入力へ反映」可能
+- 「アップロード内容をクリア」で読み込んだCSV/ZIPと集計結果を初期化
 
 > 安定性のため、CSVは最大20万行まで読み込み（超過分は切り捨て）
 
 ## 操作手順（Pages上）
 1. 公開URLを開く
 2. 契約タイプと契約値を選択
-3. CSVをアップロード（power-unitを選択）
-4. 月次集計の「この月を入力へ反映」を押す
-5. 「実行」で比較結果を確認
+3. CSV/ZIPをアップロード（power-unitを選択、複数選択可）
+4. 月次集計の「この月を入力へ反映」または期間指定集計の「期間集計を入力へ反映」を押す
+5. 必要なら「アップロード内容をクリア」で再読み込み
+6. 「実行」で比較結果を確認
 
 ## GitHub Pages デプロイ方法
 このリポジトリは Next.js を静的エクスポート（`output: 'export'`）して、GitHub Actions で Pages にデプロイします。

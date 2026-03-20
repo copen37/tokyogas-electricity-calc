@@ -1,8 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { unzipSync } from "fflate";
 import { calculate, type ContractType, type GasMode } from "@/lib/calc";
-import { parseUsageCsv, type MonthlyUsage, type PowerUnit } from "@/lib/csvUsage";
+import {
+  aggregateMonthlyUsage,
+  aggregatePeriodUsage,
+  parseUsageCsvRows,
+  type MonthlyUsage,
+  type PeriodUsage,
+  type PowerUnit,
+  type UsageRecord,
+} from "@/lib/csvUsage";
 
 type InputMode = "total" | "split";
 
@@ -19,7 +28,12 @@ export default function Home() {
 
   const [csvUnit, setCsvUnit] = useState<PowerUnit>("W");
   const [csvRows, setCsvRows] = useState<MonthlyUsage[]>([]);
+  const [csvRecords, setCsvRecords] = useState<UsageRecord[]>([]);
+  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [csvError, setCsvError] = useState<string | null>(null);
+
+  const [periodStartDate, setPeriodStartDate] = useState("");
+  const [periodEndDate, setPeriodEndDate] = useState("");
 
   const usage = useMemo(() => {
     if (inputMode === "split") {
@@ -29,27 +43,79 @@ export default function Home() {
     return { totalKwh: Number(totalKwh) };
   }, [inputMode, totalKwh, dayKwh, nightKwh]);
 
-  async function onCsvUpload(file: File) {
+  const periodUsage: PeriodUsage | null = useMemo(() => {
+    return aggregatePeriodUsage(csvRecords, csvUnit, periodStartDate, periodEndDate);
+  }, [csvRecords, csvUnit, periodStartDate, periodEndDate]);
+
+  function decodeCsvText(bytes: Uint8Array): string {
+    const tryDecode = (encoding: string) => new TextDecoder(encoding as any, { fatal: true }).decode(bytes);
+    try {
+      return tryDecode("utf-8");
+    } catch {
+      return tryDecode("shift-jis");
+    }
+  }
+
+  async function parseFileToCsvEntries(file: File): Promise<Array<{ name: string; text: string }>> {
+    const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+
+    if (file.name.toLowerCase().endsWith(".zip")) {
+      const unzipped = unzipSync(bytes);
+      const entries: Array<{ name: string; text: string }> = [];
+
+      Object.entries(unzipped).forEach(([name, data]) => {
+        if (!name.toLowerCase().endsWith(".csv")) return;
+        entries.push({ name: `${file.name}:${name}`, text: decodeCsvText(data) });
+      });
+
+      if (entries.length === 0) {
+        throw new Error(`${file.name} にCSVが含まれていません`);
+      }
+      return entries;
+    }
+
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      throw new Error(`未対応形式: ${file.name}（.csv / .zip のみ対応）`);
+    }
+
+    return [{ name: file.name, text: decodeCsvText(bytes) }];
+  }
+
+  async function onCsvUpload(files: FileList) {
     setCsvError(null);
     try {
-      const buf = await file.arrayBuffer();
-      const bytes = new Uint8Array(buf);
+      const allEntries = (await Promise.all(Array.from(files).map((f) => parseFileToCsvEntries(f)))).flat();
 
-      const tryDecode = (encoding: string) => new TextDecoder(encoding as any, { fatal: true }).decode(bytes);
+      const mergedRecords = allEntries.flatMap((entry) => parseUsageCsvRows(entry.text, csvUnit));
+      mergedRecords.sort((a, b) => a.epochMs - b.epochMs);
 
-      let text = "";
-      try {
-        text = tryDecode("utf-8");
-      } catch {
-        text = tryDecode("shift-jis");
-      }
-
-      const monthly = parseUsageCsv(text, csvUnit);
+      const monthly = aggregateMonthlyUsage(mergedRecords, csvUnit);
+      setCsvRecords(mergedRecords);
       setCsvRows(monthly);
+      setUploadedFiles(allEntries.map((e) => e.name));
+
+      if (mergedRecords.length > 0) {
+        const firstDate = new Date(mergedRecords[0].epochMs + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        const lastDate = new Date(mergedRecords[mergedRecords.length - 1].epochMs + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+        setPeriodStartDate((prev) => prev || firstDate);
+        setPeriodEndDate((prev) => prev || lastDate);
+      }
     } catch (e: any) {
       setCsvRows([]);
+      setCsvRecords([]);
+      setUploadedFiles([]);
       setCsvError(e?.message ?? "CSVの解析に失敗しました");
     }
+  }
+
+  function clearUploadedData() {
+    setCsvRows([]);
+    setCsvRecords([]);
+    setUploadedFiles([]);
+    setCsvError(null);
+    setPeriodStartDate("");
+    setPeriodEndDate("");
   }
 
   function applyMonth(row: MonthlyUsage) {
@@ -58,6 +124,14 @@ export default function Home() {
     setDayKwh(Number(row.dayKwh.toFixed(3)));
     setNightKwh(Number(row.nightKwh.toFixed(3)));
     setTotalKwh(Number(row.totalKwh.toFixed(3)));
+  }
+
+  function applyPeriod(agg: PeriodUsage) {
+    setYearMonth(agg.startDate.slice(0, 7));
+    setInputMode("split");
+    setDayKwh(Number(agg.dayKwh.toFixed(3)));
+    setNightKwh(Number(agg.nightKwh.toFixed(3)));
+    setTotalKwh(Number(agg.totalKwh.toFixed(3)));
   }
 
   return (
@@ -145,9 +219,9 @@ export default function Home() {
       </section>
 
       <section style={{ border: "1px solid #ddd", padding: 12, marginBottom: 16 }}>
-        <h2>CSVアップロード（timestamp,power / 計測日時,買電）</h2>
+        <h2>CSV / ZIPアップロード（timestamp,power / 計測日時,買電）</h2>
         <p style={{ marginTop: 0 }}>
-          timestampにoffsetがある場合はそれを尊重。offset無しはAsia/Tokyo扱い。W/kWではdt-minutesを隣接時刻差分から自動推定します。
+          複数CSVまたはZIP（中にCSV複数可）を一括読み込みできます。offsetありtimestampを優先、offset無しはAsia/Tokyo扱いです。
         </p>
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
           <label>
@@ -160,10 +234,20 @@ export default function Home() {
             </select>
           </label>
           <label>
-            CSVファイル
-            <input type="file" accept=".csv,text/csv" onChange={(e) => e.target.files?.[0] && onCsvUpload(e.target.files[0])} style={{ width: "100%" }} />
+            CSV/ZIPファイル（複数選択可）
+            <input type="file" multiple accept=".csv,.zip,text/csv,application/zip" onChange={(e) => e.target.files && onCsvUpload(e.target.files)} style={{ width: "100%" }} />
           </label>
         </div>
+
+        <div style={{ marginTop: 10 }}>
+          <button onClick={clearUploadedData} disabled={csvRecords.length === 0}>
+            アップロード内容をクリア
+          </button>
+        </div>
+
+        {uploadedFiles.length > 0 && (
+          <p style={{ marginTop: 8, fontSize: 13, color: "#555" }}>読込ファイル: {uploadedFiles.join(" / ")}</p>
+        )}
 
         {csvError && <p style={{ color: "crimson" }}>{csvError}</p>}
 
@@ -194,6 +278,38 @@ export default function Home() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {csvRecords.length > 0 && (
+          <div style={{ marginTop: 16, borderTop: "1px dashed #ccc", paddingTop: 12 }}>
+            <h3>期間指定集計</h3>
+            <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr 1fr" }}>
+              <label>
+                開始日
+                <input type="date" value={periodStartDate} onChange={(e) => setPeriodStartDate(e.target.value)} style={{ width: "100%" }} />
+              </label>
+              <label>
+                終了日
+                <input type="date" value={periodEndDate} onChange={(e) => setPeriodEndDate(e.target.value)} style={{ width: "100%" }} />
+              </label>
+            </div>
+
+            {periodUsage ? (
+              <div style={{ marginTop: 10 }}>
+                <p>
+                  {periodUsage.startDate} 〜 {periodUsage.endDate}（{periodUsage.periodDays}日 / {periodUsage.records}レコード）
+                </p>
+                <ul style={{ marginTop: 4 }}>
+                  <li>total: {periodUsage.totalKwh.toFixed(3)} kWh</li>
+                  <li>day: {periodUsage.dayKwh.toFixed(3)} kWh</li>
+                  <li>night: {periodUsage.nightKwh.toFixed(3)} kWh</li>
+                </ul>
+                <button onClick={() => applyPeriod(periodUsage)}>期間集計を入力へ反映</button>
+              </div>
+            ) : (
+              <p style={{ color: "#666" }}>開始日・終了日を正しく指定してください。</p>
+            )}
           </div>
         )}
       </section>

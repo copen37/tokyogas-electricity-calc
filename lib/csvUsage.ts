@@ -7,7 +7,17 @@ export type MonthlyUsage = {
   nightKwh: number;
 };
 
-type Row = {
+export type PeriodUsage = {
+  startDate: string;
+  endDate: string;
+  totalKwh: number;
+  dayKwh: number;
+  nightKwh: number;
+  records: number;
+  periodDays: number;
+};
+
+export type UsageRecord = {
   timestamp: string;
   power: number;
   epochMs: number;
@@ -76,11 +86,10 @@ function monthFromTimestamp(ts: string, epochMs: number): string {
 }
 
 function isNight(minuteOfDay: number): boolean {
-  // 01:00-06:00
   return minuteOfDay >= 60 && minuteOfDay < 360;
 }
 
-function estimateDtMinutes(rows: Row[], index: number, prevDt: number): number {
+function estimateDtMinutes(rows: UsageRecord[], index: number, prevDt: number): number {
   const current = rows[index];
   const next = rows[index + 1];
   if (next) {
@@ -99,7 +108,14 @@ function headerIndex(header: string[], candidates: string[]): number {
   return -1;
 }
 
-export function parseUsageCsv(text: string, unit: PowerUnit, maxRows = 200000): MonthlyUsage[] {
+function kwhFromPower(power: number, unit: PowerUnit, dtMinutes: number): number {
+  if (unit === "kWh") return power;
+  if (unit === "Wh") return power / 1000;
+  if (unit === "kW") return power * (dtMinutes / 60);
+  return (power / 1000) * (dtMinutes / 60);
+}
+
+export function parseUsageCsvRows(text: string, unit: PowerUnit, maxRows = 200000): UsageRecord[] {
   const lines = text.split(/\r?\n/);
   if (lines.length < 2) throw new Error("CSVにデータ行がありません");
 
@@ -114,7 +130,7 @@ export function parseUsageCsv(text: string, unit: PowerUnit, maxRows = 200000): 
     throw new Error("CSVヘッダは timestamp,power（または 計測日時,買電）が必要です");
   }
 
-  const rows: Row[] = [];
+  const rows: UsageRecord[] = [];
   for (let i = 1; i < lines.length && rows.length < maxRows; i++) {
     const line = lines[i].trim();
     if (!line) continue;
@@ -137,20 +153,21 @@ export function parseUsageCsv(text: string, unit: PowerUnit, maxRows = 200000): 
 
   if (rows.length === 0) throw new Error("有効な行がありません");
   rows.sort((a, b) => a.epochMs - b.epochMs);
+  return rows;
+}
 
+export function aggregateMonthlyUsage(rows: UsageRecord[], unit: PowerUnit): MonthlyUsage[] {
+  if (rows.length === 0) return [];
+
+  const sorted = [...rows].sort((a, b) => a.epochMs - b.epochMs);
   const monthMap = new Map<string, MonthlyUsage>();
   let prevDt = 30;
 
-  for (let i = 0; i < rows.length; i++) {
-    const r = rows[i];
-    const dtMinutes = estimateDtMinutes(rows, i, prevDt);
+  for (let i = 0; i < sorted.length; i++) {
+    const r = sorted[i];
+    const dtMinutes = estimateDtMinutes(sorted, i, prevDt);
     prevDt = dtMinutes;
-
-    let kwh = 0;
-    if (unit === "kWh") kwh = r.power;
-    else if (unit === "Wh") kwh = r.power / 1000;
-    else if (unit === "kW") kwh = r.power * (dtMinutes / 60);
-    else if (unit === "W") kwh = (r.power / 1000) * (dtMinutes / 60);
+    const kwh = kwhFromPower(r.power, unit, dtMinutes);
 
     const bucket = monthMap.get(r.month) ?? { month: r.month, totalKwh: 0, dayKwh: 0, nightKwh: 0 };
     bucket.totalKwh += kwh;
@@ -160,4 +177,41 @@ export function parseUsageCsv(text: string, unit: PowerUnit, maxRows = 200000): 
   }
 
   return [...monthMap.values()].sort((a, b) => a.month.localeCompare(b.month));
+}
+
+export function aggregatePeriodUsage(rows: UsageRecord[], unit: PowerUnit, startDate: string, endDate: string): PeriodUsage | null {
+  if (!startDate || !endDate || rows.length === 0) return null;
+
+  const startMs = new Date(`${startDate}T00:00:00+09:00`).getTime();
+  const endExclusiveMs = new Date(`${endDate}T00:00:00+09:00`).getTime() + 24 * 60 * 60 * 1000;
+  if (!Number.isFinite(startMs) || !Number.isFinite(endExclusiveMs) || endExclusiveMs <= startMs) return null;
+
+  const sorted = [...rows].sort((a, b) => a.epochMs - b.epochMs);
+  let prevDt = 30;
+  let totalKwh = 0;
+  let dayKwh = 0;
+  let nightKwh = 0;
+  let records = 0;
+
+  for (let i = 0; i < sorted.length; i++) {
+    const r = sorted[i];
+    const dtMinutes = estimateDtMinutes(sorted, i, prevDt);
+    prevDt = dtMinutes;
+
+    if (r.epochMs < startMs || r.epochMs >= endExclusiveMs) continue;
+
+    const kwh = kwhFromPower(r.power, unit, dtMinutes);
+    totalKwh += kwh;
+    if (isNight(r.minuteOfDay)) nightKwh += kwh;
+    else dayKwh += kwh;
+    records += 1;
+  }
+
+  const periodDays = Math.round((endExclusiveMs - startMs) / (24 * 60 * 60 * 1000));
+
+  return { startDate, endDate, totalKwh, dayKwh, nightKwh, records, periodDays };
+}
+
+export function parseUsageCsv(text: string, unit: PowerUnit, maxRows = 200000): MonthlyUsage[] {
+  return aggregateMonthlyUsage(parseUsageCsvRows(text, unit, maxRows), unit);
 }
