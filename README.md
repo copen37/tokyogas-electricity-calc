@@ -81,7 +81,7 @@ gh api --method POST repos/copen37/tokyogas-electricity-calc/pages \
 ```
 
 ## 変動単価更新の注意
-- 月次更新: `output/unit_prices_template.json` の `monthly_adjustments[YYYY-MM]`
+- 月次更新: `output/unit_prices_template.json` の `monthly_adjustments.months[YYYY-MM]`
   - `fuel_adjustment_yen_per_kwh`
   - `gov_support_yen_per_kwh`
 - 年次更新: `annual_levies[FYxxxx].renewable_surcharge_yen_per_kwh`
@@ -91,6 +91,25 @@ gh api --method POST repos/copen37/tokyogas-electricity-calc/pages \
   - 再エネ賦課金: https://www.enecho.meti.go.jp/category/saving_and_new/saiene/kaitori/surcharge.html
   - 国支援: https://denkigas-gekihenkanwa.go.jp/general/
   - セット割: https://home.tokyo-gas.co.jp/gas_power/plan/gp_plan/set.html
+
+### 月次自動更新（燃料費調整）
+- ワークフロー: `.github/workflows/update-unit-prices.yml`
+- 実行タイミング: 毎月1日 03:00 UTC（JST 12:00）
+- 手動実行: Actions > `Update fuel adjustment unit prices` > `Run workflow`
+  - `year_month` を `YYYY-MM` 形式で指定可能（未指定時はJST当月）
+
+ローカル手動実行:
+```bash
+python3 -m pip install pdfplumber requests
+python3 scripts/update_fuel_adjustment.py 2026-02
+```
+
+更新時の挙動:
+- PDF URL `.../chouseiYYMM.pdf` のHTTP statusを確認
+- 200の場合はPDF解析し、`東京電力エリア`（低圧相当）から燃料費調整単価を抽出
+- 抽出結果を `monthly_adjustments.months[YYYY-MM].fuel_adjustment_yen_per_kwh` に反映
+- `notes` に `source_url` / `checked_at` を保存
+- 抽出不能または404時は `notes` に理由とPDF URLを保存
 
 ### 検針票照合の前提
 - 請求期間モードで `開始日/終了日` を指定し、複数CSVを取り込み可

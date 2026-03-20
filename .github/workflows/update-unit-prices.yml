@@ -1,0 +1,61 @@
+name: Update fuel adjustment unit prices
+
+on:
+  schedule:
+    - cron: '0 3 1 * *'
+  workflow_dispatch:
+    inputs:
+      year_month:
+        description: 'Target month (YYYY-MM). Default: current month in JST'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install pdfplumber requests
+
+      - name: Resolve target month
+        id: ym
+        shell: bash
+        env:
+          INPUT_YM: ${{ github.event.inputs.year_month }}
+        run: |
+          if [ -n "$INPUT_YM" ]; then
+            YM="$INPUT_YM"
+          else
+            YM=$(TZ=Asia/Tokyo date +"%Y-%m")
+          fi
+          echo "year_month=$YM" >> "$GITHUB_OUTPUT"
+          echo "Using year_month=$YM"
+
+      - name: Update unit prices json
+        run: |
+          python scripts/update_fuel_adjustment.py "${{ steps.ym.outputs.year_month }}"
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add output/unit_prices_template.json
+          if git diff --cached --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git commit -m "chore: update fuel adjustment for ${{ steps.ym.outputs.year_month }}"
+          git push

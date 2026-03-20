@@ -30,16 +30,25 @@
           "20": 623.48,
           "30": 935.22,
           "40": 1246.96,
-          "50": 1558.70,
+          "50": 1558.7,
           "60": 1870.44
         },
         "kva_rate": 311.74,
         "zero_usage_half_base": true
       },
       "energy_tiers": [
-        {"up_to_kwh": 120, "unit_price": 29.70},
-        {"up_to_kwh": 300, "unit_price": 35.69},
-        {"up_to_kwh": null, "unit_price": 39.50}
+        {
+          "up_to_kwh": 120,
+          "unit_price": 29.7
+        },
+        {
+          "up_to_kwh": 300,
+          "unit_price": 35.69
+        },
+        {
+          "up_to_kwh": null,
+          "unit_price": 39.5
+        }
       ]
     },
     "zuttomo1": {
@@ -48,16 +57,25 @@
         "type": "by_ampere",
         "ampere": {
           "30": 935.25,
-          "40": 1247.00,
+          "40": 1247.0,
           "50": 1558.75,
-          "60": 1870.50
+          "60": 1870.5
         },
         "zero_usage_half_base": true
       },
       "energy_tiers": [
-        {"up_to_kwh": 140, "unit_price": 34.18},
-        {"up_to_kwh": 350, "unit_price": 34.39},
-        {"up_to_kwh": null, "unit_price": 36.92}
+        {
+          "up_to_kwh": 140,
+          "unit_price": 34.18
+        },
+        {
+          "up_to_kwh": 350,
+          "unit_price": 34.39
+        },
+        {
+          "up_to_kwh": null,
+          "unit_price": 36.92
+        }
       ]
     },
     "zuttomo2": {
@@ -68,8 +86,14 @@
         "zero_usage_half_base": true
       },
       "energy_tiers": [
-        {"up_to_kwh": 360, "unit_price": 34.42},
-        {"up_to_kwh": null, "unit_price": 36.59}
+        {
+          "up_to_kwh": 360,
+          "unit_price": 34.42
+        },
+        {
+          "up_to_kwh": null,
+          "unit_price": 36.59
+        }
       ]
     },
     "zuttomo3": {
@@ -81,14 +105,30 @@
       },
       "energy_tiers_seasonal": {
         "summer": [
-          {"up_to_contract_kw_x": 130, "unit_price": 27.34},
-          {"up_to_contract_kw_x": null, "unit_price": 28.83}
+          {
+            "up_to_contract_kw_x": 130,
+            "unit_price": 27.34
+          },
+          {
+            "up_to_contract_kw_x": null,
+            "unit_price": 28.83
+          }
         ],
         "other": [
-          {"up_to_contract_kw_x": 130, "unit_price": 25.77},
-          {"up_to_contract_kw_x": null, "unit_price": 28.71}
+          {
+            "up_to_contract_kw_x": 130,
+            "unit_price": 25.77
+          },
+          {
+            "up_to_contract_kw_x": null,
+            "unit_price": 28.71
+          }
         ],
-        "summer_months": [7, 8, 9]
+        "summer_months": [
+          7,
+          8,
+          9
+        ]
       }
     }
   },
@@ -101,12 +141,19 @@
     "2026-02": {
       "fuel_adjustment_yen_per_kwh": -12.22,
       "gov_support_yen_per_kwh": 0,
-      "notes": "東京電力エリア低圧。検針票照合用（国支援なし想定）"
+      "notes": "source_url=https://home.tokyo-gas.co.jp/gas_power/plan/power/adjustment/pdf/chousei2602.pdf; checked_at=2026-03-20T16:01:11+09:00; 東京電力エリアの表から抽出"
     },
     "2026-04": {
       "fuel_adjustment_yen_per_kwh": -8.93,
       "gov_support_yen_per_kwh": 1.5,
       "notes": "東京電力エリア低圧。燃料費調整等のお知らせ参照。"
+    },
+    "months": {
+      "2026-02": {
+        "fuel_adjustment_yen_per_kwh": -12.22,
+        "gov_support_yen_per_kwh": 0,
+        "notes": "source_url=https://home.tokyo-gas.co.jp/gas_power/plan/power/adjustment/pdf/chousei2602.pdf; checked_at=2026-03-20T16:01:11+09:00; 東京電力エリアの表から抽出"
+      }
     }
   },
   "annual_levies": {
