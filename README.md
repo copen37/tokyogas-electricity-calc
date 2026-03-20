@@ -14,6 +14,27 @@ pnpm dev
 # http://localhost:3000
 ```
 
+## GitHub Pages 公開URL
+- https://copen37.github.io/tokyogas-electricity-calc/
+
+## GitHub Pages デプロイ方法
+このリポジトリは Next.js を静的エクスポート（`output: 'export'`）して、GitHub Actions で Pages にデプロイします。
+
+1. `main` ブランチへ push
+2. `.github/workflows/deploy.yml` が起動
+3. `pnpm build` で `out/` を生成
+4. `out/` を Pages artifact としてアップロード
+5. `actions/deploy-pages` で公開
+
+初回のみ（または未設定時）は、Pages のソースを **GitHub Actions** に設定してください。
+
+```bash
+gh api --method POST repos/copen37/tokyogas-electricity-calc/pages \
+  -f build_type=workflow
+```
+
+> private リポジトリのまま Pages を使えるかどうかは、GitHub プランに依存します（Free だと制限される場合があります）。
+
 画面入力:
 - 契約A
 - 年月(YYYY-MM)
