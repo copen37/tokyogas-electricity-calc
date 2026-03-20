@@ -1,0 +1,292 @@
+{
+  "metadata": {
+    "provider": "東京ガス",
+    "area": "東京電力エリア",
+    "currency": "JPY",
+    "as_of": "2026-03-20",
+    "tax": {
+      "price_basis": "税込",
+      "label": "税込想定"
+    },
+    "rounding": {
+      "total": "円未満切り捨て"
+    },
+    "sources": [
+      "https://home.tokyo-gas.co.jp/gas_power/plan/power/menu_basic.html",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/power/zuttomo1s.html",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/power/zuttomo1.html",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/power/zuttomo2.html",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/power/zuttomo3.html",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/gp_plan/set.html",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/sustainable/unit_price.html",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/sustainable/d1c6tj00000003pu-att/sustainable_pricelist.pdf",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/jikanbetsu/unit_price.html",
+      "https://home.tokyo-gas.co.jp/gas_power/plan/jikanbetsu/d1c6tj0000001cy6-att/jikanbetsu_pricelist.pdf"
+    ],
+    "notes": [
+      "さすてな電気・時間帯別プランの単価は unit_price.html からリンクされる公式料金PDFを最小限抽出して反映。",
+      "zuttomo1s のガスセット割（定率A）の具体率は一次情報で未確認のため null。必要に応じて --set-discount-rate で上書き。"
+    ]
+  },
+  "plans": [
+    {
+      "id": "basic",
+      "name": "基本プラン",
+      "status": "new_available",
+      "price_basis_label": "税込想定",
+      "source_url": "https://home.tokyo-gas.co.jp/gas_power/plan/power/menu_basic.html",
+      "contract": {
+        "type": "ampere_or_kva",
+        "ampere_options": [10, 15, 20, 30, 40, 50, 60],
+        "kva_min": 6,
+        "kva_max": 49.999
+      },
+      "base_charge": {
+        "ampere_table": {
+          "10": 311.74,
+          "15": 467.61,
+          "20": 623.48,
+          "30": 935.22,
+          "40": 1246.96,
+          "50": 1558.7,
+          "60": 1870.44
+        },
+        "per_kva": 311.74,
+        "zero_usage_base_ratio": 0.5
+      },
+      "energy_charge": {
+        "mode": "tiered",
+        "tiers": [
+          {"up_to_kwh": 120, "rate": 29.7},
+          {"up_to_kwh": 300, "rate": 35.69},
+          {"up_to_kwh": null, "rate": 39.5}
+        ]
+      },
+      "set_discount": {
+        "type": "percent_total",
+        "value": 0.005,
+        "name": "ガス・電気セット割（定率B）"
+      }
+    },
+    {
+      "id": "zuttomo1s",
+      "name": "ずっとも電気1S",
+      "status": "closed_new",
+      "price_basis_label": "税込想定",
+      "source_url": "https://home.tokyo-gas.co.jp/gas_power/plan/power/zuttomo1s.html",
+      "contract": {
+        "type": "ampere",
+        "ampere_options": [10, 15, 20, 30, 40, 50, 60]
+      },
+      "base_charge": {
+        "ampere_table": {
+          "10": 311.74,
+          "15": 467.61,
+          "20": 623.48,
+          "30": 935.22,
+          "40": 1246.96,
+          "50": 1558.7,
+          "60": 1870.44
+        },
+        "zero_usage_base_ratio": 0.5
+      },
+      "energy_charge": {
+        "mode": "tiered",
+        "tiers": [
+          {"up_to_kwh": 120, "rate": 29.7},
+          {"up_to_kwh": 300, "rate": 35.69},
+          {"up_to_kwh": null, "rate": 39.5}
+        ]
+      },
+      "set_discount": {
+        "type": "custom",
+        "value": null,
+        "name": "ガス・電気セット割（定率A）"
+      }
+    },
+    {
+      "id": "zuttomo1",
+      "name": "ずっとも電気1",
+      "status": "closed_new",
+      "price_basis_label": "税込想定",
+      "source_url": "https://home.tokyo-gas.co.jp/gas_power/plan/power/zuttomo1.html",
+      "contract": {
+        "type": "ampere",
+        "ampere_options": [30, 40, 50, 60]
+      },
+      "base_charge": {
+        "ampere_table": {
+          "30": 935.25,
+          "40": 1247.0,
+          "50": 1558.75,
+          "60": 1870.5
+        },
+        "zero_usage_base_ratio": 0.5
+      },
+      "energy_charge": {
+        "mode": "tiered",
+        "tiers": [
+          {"up_to_kwh": 140, "rate": 34.18},
+          {"up_to_kwh": 350, "rate": 34.39},
+          {"up_to_kwh": null, "rate": 36.92}
+        ]
+      },
+      "set_discount": {
+        "type": "fixed_from_total",
+        "value": 275,
+        "name": "ガス・電気セット割（定額A）"
+      },
+      "gas_discount_yen_per_month": 275
+    },
+    {
+      "id": "zuttomo2",
+      "name": "ずっとも電気2",
+      "status": "closed_new",
+      "price_basis_label": "税込想定",
+      "source_url": "https://home.tokyo-gas.co.jp/gas_power/plan/power/zuttomo2.html",
+      "contract": {
+        "type": "kva",
+        "kva_min": 6,
+        "kva_max": 49.999
+      },
+      "base_charge": {
+        "per_kva": 311.75,
+        "zero_usage_base_ratio": 0.5
+      },
+      "energy_charge": {
+        "mode": "tiered",
+        "tiers": [
+          {"up_to_kwh": 360, "rate": 34.42},
+          {"up_to_kwh": null, "rate": 36.59}
+        ]
+      },
+      "set_discount": {
+        "type": "fixed_from_base",
+        "value": 275,
+        "name": "ガス・電気セット割（定額A）"
+      },
+      "gas_discount_yen_per_month": 275
+    },
+    {
+      "id": "zuttomo3",
+      "name": "ずっとも電気3",
+      "status": "new_available",
+      "price_basis_label": "税込想定",
+      "source_url": "https://home.tokyo-gas.co.jp/gas_power/plan/power/zuttomo3.html",
+      "contract": {
+        "type": "kw",
+        "kw_min": 0.5,
+        "kw_max": 49.999
+      },
+      "base_charge": {
+        "per_kw": 1053.76,
+        "zero_usage_base_ratio": 0.5
+      },
+      "energy_charge": {
+        "mode": "seasonal_tiered",
+        "seasonal": {
+          "summer": {
+            "tiers": [
+              {"up_to_formula": "contract_kw*130", "rate": 27.34},
+              {"up_to_kwh": null, "rate": 28.83}
+            ]
+          },
+          "other": {
+            "tiers": [
+              {"up_to_formula": "contract_kw*130", "rate": 25.77},
+              {"up_to_kwh": null, "rate": 28.71}
+            ]
+          }
+        }
+      },
+      "set_discount": {
+        "type": "fixed_from_base",
+        "value": 275,
+        "name": "ガス・電気セット割（定額A）"
+      },
+      "gas_discount_yen_per_month": 275
+    },
+    {
+      "id": "sustainable",
+      "name": "さすてな電気",
+      "status": "new_available",
+      "price_basis_label": "税込想定",
+      "source_url": "https://home.tokyo-gas.co.jp/gas_power/plan/sustainable/unit_price.html",
+      "source_pdf": "https://home.tokyo-gas.co.jp/gas_power/plan/sustainable/d1c6tj00000003pu-att/sustainable_pricelist.pdf",
+      "contract": {
+        "type": "ampere_or_kva",
+        "ampere_options": [10, 15, 20, 30, 40, 50, 60],
+        "kva_min": 1,
+        "kva_max": 49.999
+      },
+      "base_charge": {
+        "ampere_table": {
+          "10": 295.24,
+          "15": 442.86,
+          "20": 590.48,
+          "30": 885.72,
+          "40": 1180.96,
+          "50": 1476.2,
+          "60": 1771.44
+        },
+        "per_kva": 295.24,
+        "zero_usage_base_ratio": 1.0,
+        "minimum_monthly_charge": 321.42
+      },
+      "energy_charge": {
+        "mode": "tiered",
+        "tiers": [
+          {"up_to_kwh": 120, "rate": 30.0},
+          {"up_to_kwh": 300, "rate": 36.6},
+          {"up_to_kwh": null, "rate": 40.69}
+        ]
+      },
+      "set_discount": {
+        "type": "none",
+        "value": null,
+        "name": "要確認"
+      }
+    },
+    {
+      "id": "jikanbetsu",
+      "name": "時間帯別プラン",
+      "status": "new_available",
+      "price_basis_label": "税込想定",
+      "source_url": "https://home.tokyo-gas.co.jp/gas_power/plan/jikanbetsu/unit_price.html",
+      "source_pdf": "https://home.tokyo-gas.co.jp/gas_power/plan/jikanbetsu/d1c6tj0000001cy6-att/jikanbetsu_pricelist.pdf",
+      "contract": {
+        "type": "ampere_or_kva",
+        "ampere_options": [10, 15, 20, 30, 40, 50, 60],
+        "kva_min": 1,
+        "kva_max": 49.999
+      },
+      "base_charge": {
+        "ampere_table": {
+          "10": 292.28,
+          "15": 438.43,
+          "20": 584.57,
+          "30": 876.86,
+          "40": 1169.15,
+          "50": 1461.43,
+          "60": 1753.72
+        },
+        "per_kva": 292.28,
+        "zero_usage_base_ratio": 1.0,
+        "minimum_monthly_charge": 318.2
+      },
+      "energy_charge": {
+        "mode": "time_of_use",
+        "time_bands": {
+          "day": {"hours": "06:00-01:00", "rate": 35.6},
+          "night": {"hours": "01:00-06:00", "rate": 27.77}
+        },
+        "assumed_average_rate_when_no_interval": 33.97
+      },
+      "set_discount": {
+        "type": "none",
+        "value": null,
+        "name": "要確認"
+      }
+    }
+  ]
+}

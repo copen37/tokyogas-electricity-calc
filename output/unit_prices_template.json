@@ -1,0 +1,101 @@
+{
+  "meta": {
+    "provider": "tokyo-gas",
+    "area": "tepco",
+    "currency": "JPY",
+    "tax_included": true,
+    "rounding": "floor_yen_total",
+    "notes": "単価は税込を想定。最終請求額は円未満切り捨て（要約資料参照）。"
+  },
+  "plans": {
+    "basic": {
+      "display_name": "基本プラン",
+      "base_charge": {
+        "type": "by_amp_or_kva",
+        "ampere": {
+          "10": 311.74,
+          "15": 467.61,
+          "20": 623.48,
+          "30": 935.22,
+          "40": 1246.96,
+          "50": 1558.70,
+          "60": 1870.44
+        },
+        "kva_rate": 311.74,
+        "zero_usage_half_base": true
+      },
+      "energy_tiers": [
+        {"up_to_kwh": 120, "unit_price": 29.70},
+        {"up_to_kwh": 300, "unit_price": 35.69},
+        {"up_to_kwh": null, "unit_price": 39.50}
+      ]
+    },
+    "zuttomo1": {
+      "display_name": "ずっとも電気1（新規受付停止）",
+      "base_charge": {
+        "type": "by_ampere",
+        "ampere": {
+          "30": 935.25,
+          "40": 1247.00,
+          "50": 1558.75,
+          "60": 1870.50
+        },
+        "zero_usage_half_base": true
+      },
+      "energy_tiers": [
+        {"up_to_kwh": 140, "unit_price": 34.18},
+        {"up_to_kwh": 350, "unit_price": 34.39},
+        {"up_to_kwh": null, "unit_price": 36.92}
+      ]
+    },
+    "zuttomo2": {
+      "display_name": "ずっとも電気2（新規受付停止）",
+      "base_charge": {
+        "type": "by_kva",
+        "kva_rate": 311.75,
+        "zero_usage_half_base": true
+      },
+      "energy_tiers": [
+        {"up_to_kwh": 360, "unit_price": 34.42},
+        {"up_to_kwh": null, "unit_price": 36.59}
+      ]
+    },
+    "zuttomo3": {
+      "display_name": "ずっとも電気3",
+      "base_charge": {
+        "type": "by_kw",
+        "kw_rate": 1053.76,
+        "zero_usage_half_base": true
+      },
+      "energy_tiers_seasonal": {
+        "summer": [
+          {"up_to_contract_kw_x": 130, "unit_price": 27.34},
+          {"up_to_contract_kw_x": null, "unit_price": 28.83}
+        ],
+        "other": [
+          {"up_to_contract_kw_x": 130, "unit_price": 25.77},
+          {"up_to_contract_kw_x": null, "unit_price": 28.71}
+        ],
+        "summer_months": [7, 8, 9]
+      }
+    }
+  },
+  "monthly_adjustments": {
+    "2026-02": {
+      "fuel_adjustment_yen_per_kwh": -12.22,
+      "gov_support_yen_per_kwh": 4.5,
+      "notes": "東京電力エリア低圧。燃料費調整単価は値引き反映後。"
+    },
+    "2026-04": {
+      "fuel_adjustment_yen_per_kwh": -8.93,
+      "gov_support_yen_per_kwh": 1.5,
+      "notes": "東京電力エリア低圧。燃料費調整等のお知らせ参照。"
+    }
+  },
+  "annual_levies": {
+    "FY2025": {
+      "period": "2025-05 to 2026-04",
+      "renewable_surcharge_yen_per_kwh": 3.98
+    }
+  }
+}
