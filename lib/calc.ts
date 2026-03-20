@@ -2,17 +2,25 @@ import plansData from "@/output/plans.json";
 import unitPricesData from "@/output/unit_prices_template.json";
 
 export type GasMode = "both" | "with" | "without";
+export type ContractType = "ampere" | "kva" | "kw";
+
+export type UsageInput = {
+  totalKwh: number;
+  dayKwh?: number;
+  nightKwh?: number;
+};
 
 type Plan = (typeof plansData)["plans"][number];
 
 type Inputs = {
-  contractAmpere: number;
+  contractType: ContractType;
+  contractValue: number;
   yearMonth: string;
-  usageKwh: number;
+  usage: UsageInput;
   gasMode: GasMode;
 };
 
-type Result = {
+export type Result = {
   planId: string;
   name: string;
   totalFloorYen: number;
@@ -67,11 +75,39 @@ function resolveSeason(yearMonth: string): "summer" | "other" {
   return [7, 8, 9].includes(m) ? "summer" : "other";
 }
 
-function baseCharge(plan: Plan, usageKwh: number, contractAmpere: number): number {
+function inRange(v: number, min?: number, max?: number): boolean {
+  const lo = min ?? Number.NEGATIVE_INFINITY;
+  const hi = max ?? Number.POSITIVE_INFINITY;
+  return v >= lo && v <= hi;
+}
+
+function isApplicable(plan: Plan, contractType: ContractType, contractValue: number): boolean {
+  const c = plan.contract as any;
+  const ct = c.type;
+
+  if (ct === "ampere") return contractType === "ampere" && (c.ampere_options ?? []).includes(contractValue);
+  if (ct === "kva") return contractType === "kva" && inRange(contractValue, Number(c.kva_min), Number(c.kva_max));
+  if (ct === "kw") return contractType === "kw" && inRange(contractValue, Number(c.kw_min), Number(c.kw_max));
+  if (ct === "ampere_or_kva") {
+    if (contractType === "ampere") return (c.ampere_options ?? []).includes(contractValue);
+    if (contractType === "kva") return inRange(contractValue, Number(c.kva_min), Number(c.kva_max));
+    return false;
+  }
+  return false;
+}
+
+function baseCharge(plan: Plan, usageKwh: number, contractType: ContractType, contractValue: number): number {
   const base = plan.base_charge as any;
-  const b = Number(base.ampere_table?.[String(contractAmpere)] ?? 0);
-  if (b <= 0) return NaN;
-  return usageKwh <= 0 ? b * Number(base.zero_usage_base_ratio ?? 1) : b;
+  let b = NaN;
+
+  if (contractType === "ampere") b = Number(base.ampere_table?.[String(contractValue)] ?? NaN);
+  else if (contractType === "kva") b = Number(base.per_kva ?? NaN) * contractValue;
+  else if (contractType === "kw") b = Number(base.per_kw ?? NaN) * contractValue;
+
+  if (!Number.isFinite(b) || b <= 0) return NaN;
+  const adjusted = usageKwh <= 0 ? b * Number(base.zero_usage_base_ratio ?? 1) : b;
+  const minimum = Number(base.minimum_monthly_charge ?? 0);
+  return Math.max(adjusted, minimum);
 }
 
 function applyDiscount(plan: Plan, subtotal: number, base: number, usageKwh: number, hasGas: boolean): [number, number] {
@@ -100,40 +136,42 @@ function applyDiscount(plan: Plan, subtotal: number, base: number, usageKwh: num
   return [Math.max(subtotal - d, 0), d];
 }
 
-function energyCharge(plan: Plan, usageKwh: number, yearMonth: string, contractKw = 1): number {
+function energyCharge(plan: Plan, usage: UsageInput, yearMonth: string, contractKw = 1): number {
   const ec: any = plan.energy_charge;
-  if (ec.mode === "tiered") return tieredCharge(usageKwh, ec.tiers);
+  if (ec.mode === "tiered") return tieredCharge(usage.totalKwh, ec.tiers);
   if (ec.mode === "seasonal_tiered") {
     const tiers = ec.seasonal[resolveSeason(yearMonth)].tiers.map((t: any) => ({
       up_to_kwh: t.up_to_formula === "contract_kw*130" ? contractKw * 130 : t.up_to_kwh,
       rate: t.rate
     }));
-    return tieredCharge(usageKwh, tiers);
+    return tieredCharge(usage.totalKwh, tiers);
   }
-  if (ec.mode === "time_of_use") return usageKwh * Number(ec.assumed_average_rate_when_no_interval ?? 0);
+  if (ec.mode === "time_of_use") {
+    if (typeof usage.dayKwh === "number" && typeof usage.nightKwh === "number") {
+      const dayRate = Number(ec.time_bands?.day?.rate ?? 0);
+      const nightRate = Number(ec.time_bands?.night?.rate ?? 0);
+      return usage.dayKwh * dayRate + usage.nightKwh * nightRate;
+    }
+    return usage.totalKwh * Number(ec.assumed_average_rate_when_no_interval ?? 0);
+  }
   return NaN;
 }
 
-function isApplicable(plan: Plan, contractAmpere: number): boolean {
-  const ct = (plan.contract as any).type;
-  const c = plan.contract as any;
-  if (ct === "ampere" || ct === "ampere_or_kva") return (c.ampere_options ?? []).includes(contractAmpere);
-  return false;
-}
-
 function calcOne(plan: Plan, input: Inputs, hasGas: boolean): Result | null {
-  if (!isApplicable(plan, input.contractAmpere)) return null;
-  const base = baseCharge(plan, input.usageKwh, input.contractAmpere);
-  const energy = energyCharge(plan, input.usageKwh, input.yearMonth);
+  if (!isApplicable(plan, input.contractType, input.contractValue)) return null;
+
+  const base = baseCharge(plan, input.usage.totalKwh, input.contractType, input.contractValue);
+  const contractKw = input.contractType === "kw" ? input.contractValue : 1;
+  const energy = energyCharge(plan, input.usage, input.yearMonth, contractKw);
   if (!Number.isFinite(base) || !Number.isFinite(energy)) return null;
 
   const subtotal = base + energy;
-  const [afterDiscount, discount] = applyDiscount(plan, subtotal, base, input.usageKwh, hasGas);
+  const [afterDiscount, discount] = applyDiscount(plan, subtotal, base, input.usage.totalKwh, hasGas);
   const unit = loadVariableUnits(input.yearMonth);
 
-  const fuel = input.usageKwh * unit.fuel;
-  const renewable = input.usageKwh * unit.renewable;
-  const gov = input.usageKwh * unit.gov;
+  const fuel = input.usage.totalKwh * unit.fuel;
+  const renewable = input.usage.totalKwh * unit.renewable;
+  const gov = input.usage.totalKwh * unit.gov;
   const total = afterDiscount + fuel + renewable - gov;
 
   return {
