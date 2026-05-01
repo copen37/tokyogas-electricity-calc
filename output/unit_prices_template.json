@@ -158,7 +158,17 @@
         "fuel_adjustment_yen_per_kwh": -8.93,
         "gov_support_yen_per_kwh": 1.5,
         "notes": "source_url=https://home.tokyo-gas.co.jp/gas_power/plan/power/adjustment/pdf/chousei2604.pdf; checked_at=2026-04-01T17:04:55+09:00; 東京電力エリアの表から抽出"
+      },
+      "2026-05": {
+        "gov_support_yen_per_kwh": 0,
+        "fuel_adjustment_yen_per_kwh": -7.37,
+        "notes": "source_url=https://home.tokyo-gas.co.jp/gas_power/plan/power/adjustment/pdf/chousei2605.pdf; checked_at=2026-05-01T18:19:27+09:00; 東京電力エリアの表から抽出"
       }
+    },
+    "2026-05": {
+      "gov_support_yen_per_kwh": 0,
+      "fuel_adjustment_yen_per_kwh": -7.37,
+      "notes": "source_url=https://home.tokyo-gas.co.jp/gas_power/plan/power/adjustment/pdf/chousei2605.pdf; checked_at=2026-05-01T18:19:27+09:00; 東京電力エリアの表から抽出"
     }
   },
   "annual_levies": {
